@@ -11,6 +11,7 @@ namespace KingLucilia.Player
         [SerializeField] private float moveSpeed = 6.0f;
         [SerializeField] private float rotationSpeed = 15.0f;
         [SerializeField] private float gravity = -19.62f;
+        [SerializeField] private float jumpHeight = 1.5f;
 
         [Header("Health Settings")]
         [SerializeField] private int currentHealth = 100;
@@ -22,6 +23,7 @@ namespace KingLucilia.Player
         private CharacterController characterController;
         private Vector2 moveInput;
         private Vector3 verticalVelocity;
+        private bool jumpRequested;
 
         public bool IsDead => currentHealth <= 0;
 
@@ -39,41 +41,76 @@ namespace KingLucilia.Player
             moveInput = value.Get<Vector2>();
         }
 
-        private void Update()
+        public void OnJump(InputValue value)
         {
-            HandleMovement();
-            ApplyGravity();
-        }
-
-        private void HandleMovement()
-        {
-            Vector3 direction = new Vector3(moveInput.x, 0f, moveInput.y).normalized;
-
-            if (direction.magnitude >= 0.1f)
+            if (value.isPressed && characterController.isGrounded)
             {
-                float targetAngle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg;
-                if (cameraTransform != null)
-                {
-                    targetAngle += cameraTransform.eulerAngles.y;
-                }
-
-                Quaternion targetRotation = Quaternion.Euler(0f, targetAngle, 0f);
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
-
-                Vector3 moveDirection = targetRotation * Vector3.forward;
-                characterController.Move(moveDirection * moveSpeed * Time.deltaTime);
+                jumpRequested = true;
             }
         }
 
-        private void ApplyGravity()
+        private void Update()
         {
-            if (characterController.isGrounded && verticalVelocity.y < 0)
+            Vector3 horizontalMove = CalculateHorizontalMovement();
+            Vector3 verticalMove = CalculateVerticalForces();
+
+            // Unificación en un único desplazamiento físico por frame
+            characterController.Move((horizontalMove + verticalMove) * Time.deltaTime);
+        }
+
+        private Vector3 CalculateHorizontalMovement()
+        {
+            if (moveInput.sqrMagnitude < 0.01f) return Vector3.zero;
+
+            Vector3 moveDirection;
+
+            if (cameraTransform != null)
             {
-                verticalVelocity.y = -2f;
+                Vector3 camForward = cameraTransform.forward;
+                Vector3 camRight = cameraTransform.right;
+                camForward.y = 0f;
+                camRight.y = 0f;
+                camForward.Normalize();
+                camRight.Normalize();
+
+                moveDirection = (camForward * moveInput.y + camRight * moveInput.x).normalized;
+            }
+            else
+            {
+                moveDirection = new Vector3(moveInput.x, 0f, moveInput.y).normalized;
+            }
+
+            if (moveDirection.sqrMagnitude >= 0.001f)
+            {
+                Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+            }
+
+            return moveDirection * moveSpeed;
+        }
+
+        private Vector3 CalculateVerticalForces()
+        {
+            if (characterController.isGrounded)
+            {
+                if (verticalVelocity.y < 0f)
+                {
+                    verticalVelocity.y = -2f;
+                }
+
+                if (jumpRequested)
+                {
+                    verticalVelocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+                    jumpRequested = false;
+                }
+            }
+            else
+            {
+                jumpRequested = false;
             }
 
             verticalVelocity.y += gravity * Time.deltaTime;
-            characterController.Move(verticalVelocity * Time.deltaTime);
+            return verticalVelocity;
         }
 
         public void TakeDamage(int damageAmount, Vector3 hitPoint, Vector3 hitDirection)
