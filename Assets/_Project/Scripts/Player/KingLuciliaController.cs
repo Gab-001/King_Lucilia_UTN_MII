@@ -19,17 +19,27 @@ namespace KingLucilia.Player
 
         [Header("References")]
         [SerializeField] private Transform cameraTransform;
+        [SerializeField] private Animator animator;
 
         private CharacterController characterController;
         private Vector2 moveInput;
         private Vector3 verticalVelocity;
         private bool jumpRequested;
 
+        private static readonly int SpeedHash = Animator.StringToHash("Speed");
+        private static readonly int IsGroundedHash = Animator.StringToHash("IsGrounded");
+
         public bool IsDead => currentHealth <= 0;
 
         private void Awake()
         {
             characterController = GetComponent<CharacterController>();
+
+            if (animator == null)
+            {
+                animator = GetComponentInChildren<Animator>();
+            }
+
             if (cameraTransform == null && Camera.main != null)
             {
                 cameraTransform = Camera.main.transform;
@@ -54,8 +64,8 @@ namespace KingLucilia.Player
             Vector3 horizontalMove = CalculateHorizontalMovement();
             Vector3 verticalMove = CalculateVerticalForces();
 
-            // Unificación en un único desplazamiento físico por frame
             characterController.Move((horizontalMove + verticalMove) * Time.deltaTime);
+            UpdateAnimator(horizontalMove.magnitude);
         }
 
         private Vector3 CalculateHorizontalMovement()
@@ -111,6 +121,13 @@ namespace KingLucilia.Player
 
             verticalVelocity.y += gravity * Time.deltaTime;
             return verticalVelocity;
+        }
+
+        private void UpdateAnimator(float currentSpeed)
+        {
+            if (animator == null) return;
+            animator.SetFloat(SpeedHash, currentSpeed);
+            animator.SetBool(IsGroundedHash, characterController.isGrounded);
         }
 
         public void TakeDamage(int damageAmount, Vector3 hitPoint, Vector3 hitDirection)

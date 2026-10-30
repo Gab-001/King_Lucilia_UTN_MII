@@ -1,0 +1,278 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &2155196058624554905
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 278539182233824907}
+  - component: {fileID: 5691279648705008982}
+  - component: {fileID: 4451038752582554220}
+  - component: {fileID: 2640621082090138949}
+  - component: {fileID: 2850782330357713088}
+  - component: {fileID: 7688358085858187559}
+  - component: {fileID: 7113622094390265221}
+  - component: {fileID: 867908458042704867}
+  m_Layer: 0
+  m_Name: Player
+  m_TagString: Player
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &278539182233824907
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2155196058624554905}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: 0.99945533, z: -0, w: 0.033002563}
+  m_LocalPosition: {x: 476, y: 102.58, z: 402.6}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 8737178327812370955}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 176.218, z: 0}
+--- !u!33 &5691279648705008982
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2155196058624554905}
+  m_Mesh: {fileID: 10208, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!23 &4451038752582554220
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2155196058624554905}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &2640621082090138949
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2155196058624554905}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 36bd7ce11bdac3d48b756c6d518821a2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KingLucilia.Player.KingLuciliaInteraction
+  interactionRange: 10
+  interactableLayer:
+    serializedVersion: 2
+    m_Bits: 64
+  rayOrigin: {fileID: 0}
+--- !u!143 &2850782330357713088
+CharacterController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2155196058624554905}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Height: 2
+  m_Radius: 0.5
+  m_SlopeLimit: 45
+  m_StepOffset: 0.3
+  m_SkinWidth: 0.08
+  m_MinMoveDistance: 0.001
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &7688358085858187559
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2155196058624554905}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a7d72ae98b1c954fae72d6e4566e779, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KingLucilia.Player.KingLuciliaController
+  moveSpeed: 12
+  rotationSpeed: 10
+  gravity: -19.62
+  jumpHeight: 3
+  currentHealth: 100
+  maxHealth: 100
+  cameraTransform: {fileID: 0}
+--- !u!114 &7113622094390265221
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2155196058624554905}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 62899f850307741f2a39c98a8b639597, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.PlayerInput
+  m_Actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  m_NotificationBehavior: 0
+  m_UIInputModule: {fileID: 0}
+  m_DeviceLostEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  m_DeviceRegainedEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  m_ControlsChangedEvent:
+    m_PersistentCalls:
+      m_Calls: []
+  m_ActionEvents: []
+  m_NeverAutoSwitchControlSchemes: 0
+  m_DefaultControlScheme: 
+  m_DefaultActionMap: Player
+  m_SplitScreenIndex: -1
+  m_Camera: {fileID: 0}
+--- !u!114 &867908458042704867
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2155196058624554905}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4fb039c659d368c4993f43e2beb6a5c0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KingLucilia.Combat.KingLuciliaCombat
+  maxStamina: 100
+  currentStamina: 100
+  staminaRegenRate: 20
+  staminaRegenDelay: 1
+  comboDamages: 0f0000001400000023000000
+  comboResetTime: 0.8
+  lightAttackRadius: 2
+  heavyDamage: 50
+  heavyStaminaCost: 30
+  heavyAttackRadius: 2.5
+  heavyChargeDuration: 0.5
+  attackPoint: {fileID: 0}
+  hitLayers:
+    serializedVersion: 2
+    m_Bits: 0
+--- !u!1001 &9136123696312882656
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 278539182233824907}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: cbe65fe64e5c6a3409e200203b3f9231, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 28.025076
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: cbe65fe64e5c6a3409e200203b3f9231, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -2.5800476
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: cbe65fe64e5c6a3409e200203b3f9231, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -47.44694
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: cbe65fe64e5c6a3409e200203b3f9231, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.033002563
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: cbe65fe64e5c6a3409e200203b3f9231, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: cbe65fe64e5c6a3409e200203b3f9231, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.99945533
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: cbe65fe64e5c6a3409e200203b3f9231, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: cbe65fe64e5c6a3409e200203b3f9231, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: cbe65fe64e5c6a3409e200203b3f9231, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: cbe65fe64e5c6a3409e200203b3f9231, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: cbe65fe64e5c6a3409e200203b3f9231, type: 3}
+      propertyPath: m_Name
+      value: KingLucilia_rig
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: cbe65fe64e5c6a3409e200203b3f9231, type: 3}
+--- !u!4 &8737178327812370955 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: cbe65fe64e5c6a3409e200203b3f9231, type: 3}
+  m_PrefabInstance: {fileID: 9136123696312882656}
+  m_PrefabAsset: {fileID: 0}
