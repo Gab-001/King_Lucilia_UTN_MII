@@ -15,7 +15,8 @@ namespace KingLucilia.Combat
 
         [Header("Light Combo Settings")]
         [SerializeField] private int[] comboDamages = { 15, 20, 35 };
-        [SerializeField] private float comboResetTime = 0.8f;
+        [SerializeField] private float attackStepDuration = 0.55f; // Duración activa de cada tajo
+        [SerializeField] private float comboResetTime = 1.0f;
         [SerializeField] private float lightAttackRadius = 2.0f;
 
         [Header("Heavy Attack Settings")]
@@ -28,28 +29,57 @@ namespace KingLucilia.Combat
         [SerializeField] private Transform attackPoint;
         [SerializeField] private LayerMask hitLayers;
 
+        [Header("References")]
+        [SerializeField] private Animator animator;
+
         private int comboIndex = 0;
         private float lastAttackTime;
         private float lastStaminaConsumeTime;
         private bool isAttacking;
+        private bool inputBuffered;
+
+        private static readonly int AttackTriggerHash = Animator.StringToHash("Attack");
+        private static readonly int HeavyAttackTriggerHash = Animator.StringToHash("HeavyAttack");
+        private static readonly int ComboStepHash = Animator.StringToHash("ComboStep");
 
         public float CurrentStamina => currentStamina;
+        public bool IsAttacking => isAttacking;
+
+        private void Awake()
+        {
+            if (animator == null)
+            {
+                animator = GetComponentInChildren<Animator>();
+            }
+        }
 
         private void Update()
         {
             RegenerateStamina();
 
+            // Si se vence la ventana de combo sin nuevos ataques, resetea la secuencia
             if (comboIndex > 0 && Time.time - lastAttackTime > comboResetTime && !isAttacking)
             {
                 comboIndex = 0;
+                if (animator != null)
+                {
+                    animator.SetInteger(ComboStepHash, 0);
+                }
             }
         }
 
         public void OnAttack(InputValue value)
         {
-            if (value.isPressed && !isAttacking)
+            if (!value.isPressed) return;
+
+            if (!isAttacking)
             {
-                ExecuteLightAttack();
+                StartCoroutine(ExecuteAttackStep());
+            }
+            else
+            {
+                // Guarda el clic en cola (buffer) si está cerca del final del golpe actual
+                inputBuffered = true;
             }
         }
 
@@ -61,32 +91,55 @@ namespace KingLucilia.Combat
             }
         }
 
-        private void ExecuteLightAttack()
+        private IEnumerator ExecuteAttackStep()
         {
             isAttacking = true;
+            inputBuffered = false;
             lastAttackTime = Time.time;
 
-            int damage = comboDamages[comboIndex];
-            Debug.Log($"<color=green>[Combate]</color> Ataque Ligero Paso {comboIndex + 1} - Daño: {damage}");
+            if (animator != null)
+            {
+                animator.SetInteger(ComboStepHash, comboIndex);
+                animator.SetTrigger(AttackTriggerHash);
+            }
 
+            int damage = comboDamages[comboIndex];
+            Debug.Log($"<color=green>[Combate Sucesivo]</color> Paso {comboIndex + 1} - Daño: {damage}");
             DealDamage(lightAttackRadius, damage);
 
             comboIndex = (comboIndex + 1) % comboDamages.Length;
+
+            // Espera a que termine la porción activa de la animación
+            yield return new WaitForSeconds(attackStepDuration);
+
             isAttacking = false;
+
+            // Si el jugador presionó clic durante el golpe previo, encadena de inmediato el siguiente
+            if (inputBuffered)
+            {
+                StartCoroutine(ExecuteAttackStep());
+            }
         }
 
         private IEnumerator ExecuteHeavyAttackRoutine()
         {
             isAttacking = true;
+            inputBuffered = false;
             currentStamina -= heavyStaminaCost;
             lastStaminaConsumeTime = Time.time;
+
+            if (animator != null)
+            {
+                animator.SetTrigger(HeavyAttackTriggerHash);
+            }
 
             Debug.Log("<color=yellow>[Combate]</color> Cargando Estocada Pesada...");
             yield return new WaitForSeconds(heavyChargeDuration);
 
-            Debug.Log($"<color=red>[Combate]</color> ¡Estocada Pesada ejecutada! - Daño: {heavyDamage}");
+            Debug.Log($"<color=red>[Combate]</color> ¡Estocada Pesada! - Daño: {heavyDamage}");
             DealDamage(heavyAttackRadius, heavyDamage);
 
+            yield return new WaitForSeconds(0.4f);
             isAttacking = false;
         }
 

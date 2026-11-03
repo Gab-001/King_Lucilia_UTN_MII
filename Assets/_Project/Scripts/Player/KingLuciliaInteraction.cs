@@ -6,9 +6,10 @@ namespace KingLucilia.Player
 {
     public class KingLuciliaInteraction : MonoBehaviour
     {
-        [Header("Raycast Settings")]
-        [SerializeField] private float interactionRange = 4.0f;
-        [SerializeField] private LayerMask interactableLayer;
+        [Header("Interaction Settings")]
+        [SerializeField] private float interactionRange = 3.8f;
+        [SerializeField] private float detectionRadius = 0.7f;
+        [SerializeField] private LayerMask interactableLayer = ~0;
         [SerializeField] private Transform rayOrigin;
 
         private KingLuciliaController playerController;
@@ -22,48 +23,63 @@ namespace KingLucilia.Player
             }
         }
 
+        private void Update()
+        {
+            if (Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
+            {
+                TryInteract();
+            }
+        }
+
         public void OnInteract(InputValue value)
         {
             if (value.isPressed)
             {
-                Debug.Log("<color=cyan>[Input OK]</color> ¡Tecla E recibida por el Input System!");
                 TryInteract();
             }
         }
 
         private void TryInteract()
         {
-            Vector3 startPos = (rayOrigin != null ? rayOrigin.position : transform.position) + Vector3.up * 0.8f;
-            Ray ray = new Ray(startPos, transform.forward);
+            Vector3 originPos = rayOrigin != null ? rayOrigin.position : transform.position;
+            LayerMask maskToUse = (interactableLayer.value == 0) ? ~0 : interactableLayer;
 
-            // Si la LayerMask está vacía en el Inspector, forzamos detección general para no trabar la prueba
-            LayerMask maskToUse = interactableLayer.value == 0 ? ~0 : interactableLayer;
-
-            if (Physics.Raycast(ray, out RaycastHit hit, interactionRange, maskToUse))
+            // 1. CHEQUEO A QUEMARROPA (OverlapSphere): detecta si ya estás parada encima o pegada
+            Collider[] closeColliders = Physics.OverlapSphere(originPos + Vector3.up * 0.4f, detectionRadius + 0.5f, maskToUse);
+            foreach (var col in closeColliders)
             {
-                Debug.Log($"<color=yellow>[Raycast Hit]</color> El rayo impactó contra: '{hit.collider.gameObject.name}' en la Layer: '{LayerMask.LayerToName(hit.collider.gameObject.layer)}'");
-
-                if (hit.collider.TryGetComponent<IInteractable>(out var interactable))
+                var interactable = col.GetComponentInParent<IInteractable>();
+                if (interactable != null)
                 {
-                    Debug.Log("<color=green>[Éxito]</color> Objeto interactuable detectado. ¡Ejecutando cosecha!");
+                    Debug.Log($"<color=green>[Cosecha Cercana]</color> Detectado a quemarropa: '{col.name}'");
                     interactable.Interact(playerController);
-                }
-                else
-                {
-                    Debug.LogWarning($"[Aviso] Golpeaste a '{hit.collider.gameObject.name}', pero le falta el script 'ImmortalHusk'.");
+                    return;
                 }
             }
-            else
+
+            // 2. CHEQUEO A DISTANCIA (SphereCast hacia el frente/abajo)
+            Vector3 startPos = originPos + Vector3.up * 0.6f;
+            Vector3 castDirection = (transform.forward - Vector3.up * 0.25f).normalized;
+
+            if (Physics.SphereCast(startPos, detectionRadius, castDirection, out RaycastHit hit, interactionRange, maskToUse))
             {
-                Debug.LogWarning("[Aviso] Pulsaste E pero el rayo no chocó con ningún objeto dentro de 4 metros. Acércate más o mira de frente.");
+                var interactable = hit.collider.GetComponentInParent<IInteractable>();
+                if (interactable != null)
+                {
+                    Debug.Log($"<color=green>[Cosecha Frontal]</color> Detectado en rango: '{hit.collider.name}'");
+                    interactable.Interact(playerController);
+                    return;
+                }
             }
+
+            Debug.LogWarning("[Interacción] Pulsaste E pero no hay carcasas ni al lado ni al frente.");
         }
 
         private void OnDrawGizmosSelected()
         {
-            Gizmos.color = Color.green;
-            Vector3 origin = (rayOrigin != null ? rayOrigin.position : transform.position) + Vector3.up * 0.8f;
-            Gizmos.DrawRay(origin, transform.forward * interactionRange);
+            Gizmos.color = Color.cyan;
+            Vector3 originPos = rayOrigin != null ? rayOrigin.position : transform.position;
+            Gizmos.DrawWireSphere(originPos + Vector3.up * 0.4f, detectionRadius + 0.5f);
         }
     }
 }

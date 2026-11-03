@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.InputSystem;
 using KingLucilia.Core;
+using KingLucilia.Combat;
 
 namespace KingLucilia.Player
 {
@@ -25,11 +26,14 @@ namespace KingLucilia.Player
         private Vector2 moveInput;
         private Vector3 verticalVelocity;
         private bool jumpRequested;
+        private bool isDead = false;
 
         private static readonly int SpeedHash = Animator.StringToHash("Speed");
         private static readonly int IsGroundedHash = Animator.StringToHash("IsGrounded");
+        private static readonly int DieHash = Animator.StringToHash("Die");
 
-        public bool IsDead => currentHealth <= 0;
+        public bool IsDead => isDead;
+        public int CurrentHealth => currentHealth;
 
         private void Awake()
         {
@@ -48,11 +52,13 @@ namespace KingLucilia.Player
 
         public void OnMove(InputValue value)
         {
+            if (isDead) return;
             moveInput = value.Get<Vector2>();
         }
 
         public void OnJump(InputValue value)
         {
+            if (isDead) return;
             if (value.isPressed && characterController.isGrounded)
             {
                 jumpRequested = true;
@@ -61,11 +67,19 @@ namespace KingLucilia.Player
 
         private void Update()
         {
+            if (isDead) return;
+
             Vector3 horizontalMove = CalculateHorizontalMovement();
             Vector3 verticalMove = CalculateVerticalForces();
 
             characterController.Move((horizontalMove + verticalMove) * Time.deltaTime);
-            UpdateAnimator(horizontalMove.magnitude);
+
+            if (animator != null)
+            {
+                float currentSpeed = new Vector2(horizontalMove.x, horizontalMove.z).magnitude;
+                animator.SetFloat(SpeedHash, currentSpeed, 0.1f, Time.deltaTime);
+                animator.SetBool(IsGroundedHash, characterController.isGrounded);
+            }
         }
 
         private Vector3 CalculateHorizontalMovement()
@@ -123,19 +137,52 @@ namespace KingLucilia.Player
             return verticalVelocity;
         }
 
-        private void UpdateAnimator(float currentSpeed)
-        {
-            if (animator == null) return;
-            animator.SetFloat(SpeedHash, currentSpeed);
-            animator.SetBool(IsGroundedHash, characterController.isGrounded);
-        }
-
         public void TakeDamage(int damageAmount, Vector3 hitPoint, Vector3 hitDirection)
         {
-            if (IsDead) return;
+            if (isDead) return;
 
             currentHealth = Mathf.Max(0, currentHealth - damageAmount);
             Debug.Log($"<color=red>[Player Daño]</color> Lucilia recibió {damageAmount} de daño. Vida actual: {currentHealth}/{maxHealth}");
+
+            if (currentHealth <= 0)
+            {
+                Die();
+            }
+        }
+
+        private void Die()
+        {
+            if (isDead) return;
+            isDead = true;
+
+            moveInput = Vector2.zero;
+            verticalVelocity = Vector3.zero;
+
+            if (animator != null)
+            {
+                animator.SetFloat(SpeedHash, 0f);
+                animator.SetTrigger(DieHash);
+            }
+
+            // Deshabilitar combate si el componente existe
+            if (TryGetComponent<KingLuciliaCombat>(out var combat))
+            {
+                combat.enabled = false;
+            }
+
+            // Deshabilitar interacciones si el componente existe
+            if (TryGetComponent<KingLuciliaInteraction>(out var interaction))
+            {
+                interaction.enabled = false;
+            }
+
+            // Desactivar CharacterController para liberar colisiones
+            if (characterController != null)
+            {
+                characterController.enabled = false;
+            }
+
+            Debug.Log("<color=black>[Player Derrotado]</color> King Lucilia ha caído en combate.");
         }
     }
 }
