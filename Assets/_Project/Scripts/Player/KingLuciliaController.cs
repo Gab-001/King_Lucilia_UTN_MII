@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using UnityEngine;
 using UnityEngine.InputSystem;
 using KingLucilia.Core;
 using KingLucilia.Combat;
@@ -14,6 +15,10 @@ namespace KingLucilia.Player
         [SerializeField] private float gravity = -19.62f;
         [SerializeField] private float jumpHeight = 1.5f;
 
+        [Header("Dash Settings")]
+        [SerializeField] private float dashDistance = 6.0f;
+        [SerializeField] private float dashDuration = 0.25f;
+
         [Header("Health Settings")]
         [SerializeField] private int currentHealth = 100;
         [SerializeField] private int maxHealth = 100;
@@ -21,18 +26,20 @@ namespace KingLucilia.Player
         [Header("References")]
         [SerializeField] private Transform cameraTransform;
         [SerializeField] private Animator animator;
+        [SerializeField] private KingLuciliaCombat combat;
 
         private CharacterController characterController;
         private Vector2 moveInput;
         private Vector3 verticalVelocity;
         private bool jumpRequested;
-        private bool isDead = false;
+        private bool isDashing;
+        private Vector3 dashDirection;
 
         private static readonly int SpeedHash = Animator.StringToHash("Speed");
         private static readonly int IsGroundedHash = Animator.StringToHash("IsGrounded");
         private static readonly int DieHash = Animator.StringToHash("Die");
 
-        public bool IsDead => isDead;
+        public bool IsDead => currentHealth <= 0;
         public int CurrentHealth => currentHealth;
 
         private void Awake()
@@ -44,6 +51,11 @@ namespace KingLucilia.Player
                 animator = GetComponentInChildren<Animator>();
             }
 
+            if (combat == null)
+            {
+                combat = GetComponent<KingLuciliaCombat>();
+            }
+
             if (cameraTransform == null && Camera.main != null)
             {
                 cameraTransform = Camera.main.transform;
@@ -52,42 +64,94 @@ namespace KingLucilia.Player
 
         public void OnMove(InputValue value)
         {
-            if (isDead) return;
+            if (IsDead) return;
             moveInput = value.Get<Vector2>();
         }
 
         public void OnJump(InputValue value)
         {
-            if (isDead) return;
-            if (value.isPressed && characterController.isGrounded)
+            if (!value.isPressed || IsDead || isDashing) return;
+
+            // Si está atacando, no saltar ni hacer dash
+            if (combat != null && combat.IsAttacking) return;
+
+            if (moveInput.sqrMagnitude > 0.05f)
+            {
+                if (combat != null && combat.TryExecuteDash(0.3f))
+                {
+                    StartCoroutine(PerformDashRoutine());
+                    return;
+                }
+            }
+
+            if (characterController.isGrounded)
             {
                 jumpRequested = true;
             }
         }
 
+        public void OnAttack(InputValue value)
+        {
+            if (value.isPressed && combat != null && !IsDead)
+            {
+                combat.PerformLightAttack();
+            }
+        }
+
+        public void OnHeavyAttack(InputValue value)
+        {
+            if (value.isPressed && combat != null && !IsDead)
+            {
+                combat.PerformHeavyAttack();
+            }
+        }
+
+        private IEnumerator PerformDashRoutine()
+        {
+            isDashing = true;
+            float elapsed = 0f;
+            float speed = dashDistance / dashDuration;
+
+            dashDirection = GetMovementDirection();
+            if (dashDirection.sqrMagnitude < 0.01f)
+            {
+                dashDirection = transform.forward;
+            }
+
+            while (elapsed < dashDuration)
+            {
+                characterController.Move(dashDirection * speed * Time.deltaTime);
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+
+            isDashing = false;
+        }
+
         private void Update()
         {
-            if (isDead) return;
+            if (IsDead) return;
+
+            if (isDashing)
+            {
+                ApplyGravityOnly();
+                UpdateAnimator(moveSpeed);
+                return;
+            }
 
             Vector3 horizontalMove = CalculateHorizontalMovement();
             Vector3 verticalMove = CalculateVerticalForces();
 
             characterController.Move((horizontalMove + verticalMove) * Time.deltaTime);
 
-            if (animator != null)
-            {
-                float currentSpeed = new Vector2(horizontalMove.x, horizontalMove.z).magnitude;
-                animator.SetFloat(SpeedHash, currentSpeed, 0.1f, Time.deltaTime);
-                animator.SetBool(IsGroundedHash, characterController.isGrounded);
-            }
+            UpdateAnimator(horizontalMove.magnitude);
         }
 
-        private Vector3 CalculateHorizontalMovement()
+        private Vector3 GetMovementDirection()
         {
             if (moveInput.sqrMagnitude < 0.01f) return Vector3.zero;
 
-            Vector3 moveDirection;
-
+            Vector3 moveDir;
             if (cameraTransform != null)
             {
                 Vector3 camForward = cameraTransform.forward;
@@ -97,12 +161,25 @@ namespace KingLucilia.Player
                 camForward.Normalize();
                 camRight.Normalize();
 
-                moveDirection = (camForward * moveInput.y + camRight * moveInput.x).normalized;
+                moveDir = (camForward * moveInput.y + camRight * moveInput.x).normalized;
             }
             else
             {
-                moveDirection = new Vector3(moveInput.x, 0f, moveInput.y).normalized;
+                moveDir = new Vector3(moveInput.x, 0f, moveInput.y).normalized;
             }
+
+            return moveDir;
+        }
+
+        private Vector3 CalculateHorizontalMovement()
+        {
+            // Bloquea movimiento si está ejecutando un ataque
+            if (combat != null && combat.IsAttacking)
+            {
+                return Vector3.zero;
+            }
+
+            Vector3 moveDirection = GetMovementDirection();
 
             if (moveDirection.sqrMagnitude >= 0.001f)
             {
@@ -117,10 +194,7 @@ namespace KingLucilia.Player
         {
             if (characterController.isGrounded)
             {
-                if (verticalVelocity.y < 0f)
-                {
-                    verticalVelocity.y = -2f;
-                }
+                if (verticalVelocity.y < 0f) verticalVelocity.y = -2f;
 
                 if (jumpRequested)
                 {
@@ -137,52 +211,49 @@ namespace KingLucilia.Player
             return verticalVelocity;
         }
 
+        private void ApplyGravityOnly()
+        {
+            if (characterController.isGrounded && verticalVelocity.y < 0f)
+            {
+                verticalVelocity.y = -2f;
+            }
+            verticalVelocity.y += gravity * Time.deltaTime;
+            characterController.Move(verticalVelocity * Time.deltaTime);
+        }
+
+        private void UpdateAnimator(float currentSpeed)
+        {
+            if (animator == null) return;
+            float speedToSend = (combat != null && combat.IsAttacking) ? 0f : currentSpeed;
+            animator.SetFloat(SpeedHash, speedToSend, 0.1f, Time.deltaTime);
+            animator.SetBool(IsGroundedHash, characterController.isGrounded);
+        }
+
         public void TakeDamage(int damageAmount, Vector3 hitPoint, Vector3 hitDirection)
         {
-            if (isDead) return;
+            if (IsDead) return;
+
+            if (combat != null && combat.IsInvulnerable)
+            {
+                Debug.Log("<color=cyan>[Dash i-frames]</color> ¡Daño evadido exitosamente!");
+                return;
+            }
 
             currentHealth = Mathf.Max(0, currentHealth - damageAmount);
             Debug.Log($"<color=red>[Player Daño]</color> Lucilia recibió {damageAmount} de daño. Vida actual: {currentHealth}/{maxHealth}");
 
             if (currentHealth <= 0)
             {
-                Die();
+                if (animator != null)
+                {
+                    animator.SetFloat(SpeedHash, 0f);
+                    animator.SetTrigger(DieHash);
+                }
+
+                if (combat != null) combat.enabled = false;
+                if (characterController != null) characterController.enabled = false;
+                enabled = false;
             }
-        }
-
-        private void Die()
-        {
-            if (isDead) return;
-            isDead = true;
-
-            moveInput = Vector2.zero;
-            verticalVelocity = Vector3.zero;
-
-            if (animator != null)
-            {
-                animator.SetFloat(SpeedHash, 0f);
-                animator.SetTrigger(DieHash);
-            }
-
-            // Deshabilitar combate si el componente existe
-            if (TryGetComponent<KingLuciliaCombat>(out var combat))
-            {
-                combat.enabled = false;
-            }
-
-            // Deshabilitar interacciones si el componente existe
-            if (TryGetComponent<KingLuciliaInteraction>(out var interaction))
-            {
-                interaction.enabled = false;
-            }
-
-            // Desactivar CharacterController para liberar colisiones
-            if (characterController != null)
-            {
-                characterController.enabled = false;
-            }
-
-            Debug.Log("<color=black>[Player Derrotado]</color> King Lucilia ha caído en combate.");
         }
     }
 }

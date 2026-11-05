@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
-using Unity.Cinemachine; // Cinemachine 3.x
+using Unity.Cinemachine;
 using KingLucilia.Enemies;
+using KingLucilia.UI;
 
 namespace KingLucilia.Environment
 {
@@ -8,14 +9,17 @@ namespace KingLucilia.Environment
     public class BossArenaTrigger : MonoBehaviour
     {
         [Header("Obstacles & Fog Wall")]
-        [SerializeField] private GameObject fogWallCollider; // Pared física que bloquea la salida
+        [SerializeField] private GameObject fogWallCollider;
 
         [Header("Cinemachine Cameras")]
-        [SerializeField] private CinemachineCamera bossArenaCamera; // Cámara cenital/amplia de la arena
+        [SerializeField] private CinemachineCamera bossArenaCamera;
         [SerializeField] private int activePriority = 20;
 
         [Header("Boss Reference")]
         [SerializeField] private ColossusBoss colossusBoss;
+
+        [Header("UI Reference")]
+        [SerializeField] private PlayerHUD playerHUD;
 
         private bool hasTriggered = false;
 
@@ -27,6 +31,11 @@ namespace KingLucilia.Environment
             if (fogWallCollider != null)
             {
                 fogWallCollider.SetActive(false);
+            }
+
+            if (playerHUD == null)
+            {
+                playerHUD = FindFirstObjectByType<PlayerHUD>();
             }
         }
 
@@ -45,7 +54,7 @@ namespace KingLucilia.Environment
         {
             Debug.Log("<color=yellow>[Boss Arena]</color> Lucilia cruzó el umbral. ¡Despertando al Coloso Hinchado!");
 
-            // 1. Sellar la salida trasera
+            // 1. Sellar salida
             if (fogWallCollider != null)
             {
                 fogWallCollider.SetActive(true);
@@ -61,6 +70,12 @@ namespace KingLucilia.Environment
             if (colossusBoss != null)
             {
                 colossusBoss.WakeUp();
+            }
+
+            // 4. Encender barra de vida superior en el HUD
+            if (playerHUD != null && colossusBoss != null)
+            {
+                playerHUD.ActivateBossBar(colossusBoss, "El Coloso Hinchado");
             }
         }
     }

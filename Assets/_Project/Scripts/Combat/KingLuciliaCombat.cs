@@ -12,10 +12,11 @@ namespace KingLucilia.Combat
         [SerializeField] private float currentStamina = 100f;
         [SerializeField] private float staminaRegenRate = 20f;
         [SerializeField] private float staminaRegenDelay = 1f;
+        [SerializeField] private float dashStaminaCost = 25f;
 
         [Header("Light Combo Settings")]
         [SerializeField] private int[] comboDamages = { 15, 20, 35 };
-        [SerializeField] private float attackStepDuration = 0.55f; // Duración activa de cada tajo
+        [SerializeField] private float attackStepDuration = 0.5f;
         [SerializeField] private float comboResetTime = 1.0f;
         [SerializeField] private float lightAttackRadius = 2.0f;
 
@@ -23,11 +24,11 @@ namespace KingLucilia.Combat
         [SerializeField] private int heavyDamage = 50;
         [SerializeField] private float heavyStaminaCost = 30f;
         [SerializeField] private float heavyAttackRadius = 2.5f;
-        [SerializeField] private float heavyChargeDuration = 0.5f;
+        [SerializeField] private float heavyChargeDuration = 0.4f;
 
         [Header("Detection Settings")]
         [SerializeField] private Transform attackPoint;
-        [SerializeField] private LayerMask hitLayers;
+        [SerializeField] private LayerMask hitLayers = ~0;
 
         [Header("References")]
         [SerializeField] private Animator animator;
@@ -36,7 +37,7 @@ namespace KingLucilia.Combat
         private float lastAttackTime;
         private float lastStaminaConsumeTime;
         private bool isAttacking;
-        private bool inputBuffered;
+        public bool IsInvulnerable { get; private set; }
 
         private static readonly int AttackTriggerHash = Animator.StringToHash("Attack");
         private static readonly int HeavyAttackTriggerHash = Animator.StringToHash("HeavyAttack");
@@ -51,13 +52,26 @@ namespace KingLucilia.Combat
             {
                 animator = GetComponentInChildren<Animator>();
             }
+            currentStamina = maxStamina;
         }
 
         private void Update()
         {
             RegenerateStamina();
 
-            // Si se vence la ventana de combo sin nuevos ataques, resetea la secuencia
+            // Respaldo directo de mouse por si el PlayerInput no rutea la acción
+            if (Mouse.current != null)
+            {
+                if (Mouse.current.leftButton.wasPressedThisFrame)
+                {
+                    PerformLightAttack();
+                }
+                else if (Mouse.current.rightButton.wasPressedThisFrame)
+                {
+                    PerformHeavyAttack();
+                }
+            }
+
             if (comboIndex > 0 && Time.time - lastAttackTime > comboResetTime && !isAttacking)
             {
                 comboIndex = 0;
@@ -70,31 +84,40 @@ namespace KingLucilia.Combat
 
         public void OnAttack(InputValue value)
         {
-            if (!value.isPressed) return;
-
-            if (!isAttacking)
+            if (value.isPressed)
             {
-                StartCoroutine(ExecuteAttackStep());
-            }
-            else
-            {
-                // Guarda el clic en cola (buffer) si está cerca del final del golpe actual
-                inputBuffered = true;
+                PerformLightAttack();
             }
         }
 
         public void OnHeavyAttack(InputValue value)
         {
-            if (value.isPressed && !isAttacking && currentStamina >= heavyStaminaCost)
+            if (value.isPressed)
             {
-                StartCoroutine(ExecuteHeavyAttackRoutine());
+                PerformHeavyAttack();
             }
         }
 
-        private IEnumerator ExecuteAttackStep()
+        public void PerformLightAttack()
+        {
+            if (isAttacking) return;
+            if (currentStamina < 10f) return;
+
+            ConsumeStamina(10f);
+            StartCoroutine(LightAttackRoutine());
+        }
+
+        public void PerformHeavyAttack()
+        {
+            if (isAttacking) return;
+            if (currentStamina < heavyStaminaCost) return;
+
+            StartCoroutine(HeavyAttackRoutine());
+        }
+
+        private IEnumerator LightAttackRoutine()
         {
             isAttacking = true;
-            inputBuffered = false;
             lastAttackTime = Time.time;
 
             if (animator != null)
@@ -103,49 +126,39 @@ namespace KingLucilia.Combat
                 animator.SetTrigger(AttackTriggerHash);
             }
 
-            int damage = comboDamages[comboIndex];
-            Debug.Log($"<color=green>[Combate Sucesivo]</color> Paso {comboIndex + 1} - Daño: {damage}");
+            int damage = (comboIndex < comboDamages.Length) ? comboDamages[comboIndex] : 15;
+            Debug.Log($"<color=green>[Ataque Ligero]</color> Paso {comboIndex + 1} - Daño: {damage}");
             DealDamage(lightAttackRadius, damage);
 
             comboIndex = (comboIndex + 1) % comboDamages.Length;
 
-            // Espera a que termine la porción activa de la animación
             yield return new WaitForSeconds(attackStepDuration);
-
             isAttacking = false;
-
-            // Si el jugador presionó clic durante el golpe previo, encadena de inmediato el siguiente
-            if (inputBuffered)
-            {
-                StartCoroutine(ExecuteAttackStep());
-            }
         }
 
-        private IEnumerator ExecuteHeavyAttackRoutine()
+        private IEnumerator HeavyAttackRoutine()
         {
             isAttacking = true;
-            inputBuffered = false;
-            currentStamina -= heavyStaminaCost;
-            lastStaminaConsumeTime = Time.time;
+            ConsumeStamina(heavyStaminaCost);
 
             if (animator != null)
             {
                 animator.SetTrigger(HeavyAttackTriggerHash);
             }
 
-            Debug.Log("<color=yellow>[Combate]</color> Cargando Estocada Pesada...");
+            Debug.Log("<color=yellow>[Ataque Pesado]</color> Cargando estocada...");
             yield return new WaitForSeconds(heavyChargeDuration);
 
-            Debug.Log($"<color=red>[Combate]</color> ¡Estocada Pesada! - Daño: {heavyDamage}");
+            Debug.Log($"<color=red>[Ataque Pesado]</color> ¡Impacto! - Daño: {heavyDamage}");
             DealDamage(heavyAttackRadius, heavyDamage);
 
-            yield return new WaitForSeconds(0.4f);
+            yield return new WaitForSeconds(0.35f);
             isAttacking = false;
         }
 
         private void DealDamage(float radius, int damageAmount)
         {
-            Vector3 origin = attackPoint != null ? attackPoint.position : transform.position + transform.forward;
+            Vector3 origin = attackPoint != null ? attackPoint.position : transform.position + transform.forward * 1.2f + Vector3.up * 0.9f;
             Collider[] hits = Physics.OverlapSphere(origin, radius, hitLayers);
 
             foreach (var hit in hits)
@@ -155,6 +168,28 @@ namespace KingLucilia.Combat
                     victim.TakeDamage(damageAmount, hit.ClosestPoint(origin), transform.forward);
                 }
             }
+        }
+
+        public bool TryExecuteDash(float invulnerabilityDuration = 0.3f)
+        {
+            if (currentStamina < dashStaminaCost) return false;
+
+            ConsumeStamina(dashStaminaCost);
+            StartCoroutine(InvulnerabilityRoutine(invulnerabilityDuration));
+            return true;
+        }
+
+        private IEnumerator InvulnerabilityRoutine(float duration)
+        {
+            IsInvulnerable = true;
+            yield return new WaitForSeconds(duration);
+            IsInvulnerable = false;
+        }
+
+        public void ConsumeStamina(float amount)
+        {
+            currentStamina = Mathf.Max(0f, currentStamina - amount);
+            lastStaminaConsumeTime = Time.time;
         }
 
         private void RegenerateStamina()
@@ -167,7 +202,7 @@ namespace KingLucilia.Combat
 
         private void OnDrawGizmosSelected()
         {
-            Vector3 origin = attackPoint != null ? attackPoint.position : transform.position + transform.forward;
+            Vector3 origin = attackPoint != null ? attackPoint.position : transform.position + transform.forward * 1.2f + Vector3.up * 0.9f;
             Gizmos.color = Color.red;
             Gizmos.DrawWireSphere(origin, lightAttackRadius);
         }
