@@ -34,6 +34,9 @@ namespace KingLucilia.Player
         private bool jumpRequested;
         private bool isDashing;
         private Vector3 dashDirection;
+        private bool canAirDash = false;
+        private float lastJumpTime = -1f;
+        private Vector3 groundNormal = Vector3.up;
 
         private static readonly int SpeedHash = Animator.StringToHash("Speed");
         private static readonly int IsGroundedHash = Animator.StringToHash("IsGrounded");
@@ -71,22 +74,25 @@ namespace KingLucilia.Player
         public void OnJump(InputValue value)
         {
             if (!value.isPressed || IsDead || isDashing) return;
-
-            // Si está atacando, no saltar ni hacer dash
             if (combat != null && combat.IsAttacking) return;
 
-            if (moveInput.sqrMagnitude > 0.05f)
+            // 1. Salto desde el suelo (bloqueando trepar paredes por ángulo y cooldown)
+            if (IsGroundedOnValidSlope() && Time.time >= lastJumpTime + 0.2f)
+            {
+                jumpRequested = true;
+                lastJumpTime = Time.time;
+                canAirDash = true;
+                return;
+            }
+
+            // 2. Dash Alado: Únicamente mientras está en el aire tras saltar y manteniendo dirección (W)
+            if (!characterController.isGrounded && canAirDash && moveInput.sqrMagnitude > 0.05f)
             {
                 if (combat != null && combat.TryExecuteDash(0.3f))
                 {
+                    canAirDash = false;
                     StartCoroutine(PerformDashRoutine());
-                    return;
                 }
-            }
-
-            if (characterController.isGrounded)
-            {
-                jumpRequested = true;
             }
         }
 
@@ -106,9 +112,24 @@ namespace KingLucilia.Player
             }
         }
 
+        private bool IsGroundedOnValidSlope()
+        {
+            if (!characterController.isGrounded) return false;
+
+            // Evita considerar suelo a paredes empinadas (límite por slopeLimit)
+            float slopeAngle = Vector3.Angle(Vector3.up, groundNormal);
+            return slopeAngle <= characterController.slopeLimit;
+        }
+
+        private void OnControllerColliderHit(ControllerColliderHit hit)
+        {
+            groundNormal = hit.normal;
+        }
+
         private IEnumerator PerformDashRoutine()
         {
             isDashing = true;
+            verticalVelocity.y = 0f; // Pausa temporal de caída durante el impulso horizontal
             float elapsed = 0f;
             float speed = dashDistance / dashDuration;
 
@@ -134,7 +155,6 @@ namespace KingLucilia.Player
 
             if (isDashing)
             {
-                ApplyGravityOnly();
                 UpdateAnimator(moveSpeed);
                 return;
             }
@@ -173,7 +193,6 @@ namespace KingLucilia.Player
 
         private Vector3 CalculateHorizontalMovement()
         {
-            // Bloquea movimiento si está ejecutando un ataque
             if (combat != null && combat.IsAttacking)
             {
                 return Vector3.zero;
@@ -194,12 +213,20 @@ namespace KingLucilia.Player
         {
             if (characterController.isGrounded)
             {
-                if (verticalVelocity.y < 0f) verticalVelocity.y = -2f;
+                if (verticalVelocity.y < 0f)
+                {
+                    verticalVelocity.y = -2f;
+                }
 
                 if (jumpRequested)
                 {
                     verticalVelocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
                     jumpRequested = false;
+                }
+                else
+                {
+                    // Al tocar suelo firme se reinicia la posibilidad de dash
+                    canAirDash = false;
                 }
             }
             else
@@ -209,16 +236,6 @@ namespace KingLucilia.Player
 
             verticalVelocity.y += gravity * Time.deltaTime;
             return verticalVelocity;
-        }
-
-        private void ApplyGravityOnly()
-        {
-            if (characterController.isGrounded && verticalVelocity.y < 0f)
-            {
-                verticalVelocity.y = -2f;
-            }
-            verticalVelocity.y += gravity * Time.deltaTime;
-            characterController.Move(verticalVelocity * Time.deltaTime);
         }
 
         private void UpdateAnimator(float currentSpeed)
@@ -235,7 +252,7 @@ namespace KingLucilia.Player
 
             if (combat != null && combat.IsInvulnerable)
             {
-                Debug.Log("<color=cyan>[Dash i-frames]</color> ¡Daño evadido exitosamente!");
+                Debug.Log("<color=cyan>[Dash i-frames]</color> Daño evadido exitosamente.");
                 return;
             }
 
