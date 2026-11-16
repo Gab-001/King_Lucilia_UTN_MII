@@ -7,16 +7,20 @@ namespace KingLucilia.Combat
 {
     public class KingLuciliaCombat : MonoBehaviour
     {
-        [Header("Stamina & Stats")]
+        [Header("Stamina & Spore Stats (GDD 5.1)")]
         [SerializeField] private float maxStamina = 100f;
         [SerializeField] private float currentStamina = 100f;
         [SerializeField] private float staminaRegenRate = 20f;
         [SerializeField] private float staminaRegenDelay = 1f;
         [SerializeField] private float dashStaminaCost = 25f;
 
+        [Space(5)]
+        [SerializeField] private float maxSporeCharge = 100f;
+        [SerializeField] private float currentSporeCharge = 60f;
+
         [Header("Light Combo Settings")]
         [SerializeField] private int[] comboDamages = { 15, 20, 35 };
-        [SerializeField] private float attackStepDuration = 0.5f;
+        [SerializeField] private float attackStepDuration = 0.45f;
         [SerializeField] private float comboResetTime = 1.0f;
         [SerializeField] private float lightAttackRadius = 2.0f;
 
@@ -25,6 +29,20 @@ namespace KingLucilia.Combat
         [SerializeField] private float heavyStaminaCost = 30f;
         [SerializeField] private float heavyAttackRadius = 2.5f;
         [SerializeField] private float heavyChargeDuration = 0.4f;
+
+        [Header("Spore Shot Settings (Tecla Q - Mano Izquierda)")]
+        [SerializeField] private GameObject sporeProjectilePrefab;
+        [Tooltip("Arrastra aquí el Empty creado dentro del hueso LeftHand")]
+        [SerializeField] private Transform leftHandFirePoint;
+        [SerializeField] private float sporeShotCost = 20f;
+        [Tooltip("Tiempo en segundos desde que inicia la animación hasta que sale la espora de la mano")]
+        [SerializeField] private float sporeSpawnDelay = 0.25f;
+        [SerializeField] private float sporeShotRecovery = 0.35f;
+
+        [Header("Adjustable Slash VFX")]
+        [SerializeField] private GameObject slashVFXPrefab;
+        [SerializeField] private Transform slashSpawnPoint;
+        [SerializeField] private float slashVFXLifetime = 0.6f;
 
         [Header("Detection Settings")]
         [SerializeField] private Transform attackPoint;
@@ -37,14 +55,17 @@ namespace KingLucilia.Combat
         private float lastAttackTime;
         private float lastStaminaConsumeTime;
         private bool isAttacking;
-        public bool IsInvulnerable { get; private set; }
+        private bool isInvulnerable;
 
         private static readonly int AttackTriggerHash = Animator.StringToHash("Attack");
         private static readonly int HeavyAttackTriggerHash = Animator.StringToHash("HeavyAttack");
+        private static readonly int SporeShotTriggerHash = Animator.StringToHash("SporeShot");
         private static readonly int ComboStepHash = Animator.StringToHash("ComboStep");
 
         public float CurrentStamina => currentStamina;
+        public float CurrentSporeCharge => currentSporeCharge;
         public bool IsAttacking => isAttacking;
+        public bool IsInvulnerable => isInvulnerable;
 
         private void Awake()
         {
@@ -59,16 +80,23 @@ namespace KingLucilia.Combat
         {
             RegenerateStamina();
 
-            // Respaldo directo de mouse por si el PlayerInput no rutea la acción
-            if (Mouse.current != null)
+            if (!isAttacking)
             {
-                if (Mouse.current.leftButton.wasPressedThisFrame)
+                if (Mouse.current != null)
                 {
-                    PerformLightAttack();
+                    if (Mouse.current.leftButton.wasPressedThisFrame)
+                    {
+                        PerformLightAttack();
+                    }
+                    else if (Mouse.current.rightButton.wasPressedThisFrame)
+                    {
+                        PerformHeavyAttack();
+                    }
                 }
-                else if (Mouse.current.rightButton.wasPressedThisFrame)
+
+                if (Keyboard.current != null && Keyboard.current.qKey.wasPressedThisFrame)
                 {
-                    PerformHeavyAttack();
+                    PerformSporeShot();
                 }
             }
 
@@ -84,41 +112,78 @@ namespace KingLucilia.Combat
 
         public void OnAttack(InputValue value)
         {
-            if (value.isPressed)
-            {
-                PerformLightAttack();
-            }
+            if (value.isPressed) PerformLightAttack();
         }
 
         public void OnHeavyAttack(InputValue value)
         {
-            if (value.isPressed)
-            {
-                PerformHeavyAttack();
-            }
+            if (value.isPressed) PerformHeavyAttack();
+        }
+
+        public void OnSporeShot(InputValue value)
+        {
+            if (value.isPressed) PerformSporeShot();
         }
 
         public void PerformLightAttack()
         {
-            if (isAttacking) return;
-            if (currentStamina < 10f) return;
-
-            ConsumeStamina(10f);
+            if (isAttacking || currentStamina < 10f) return;
             StartCoroutine(LightAttackRoutine());
         }
 
         public void PerformHeavyAttack()
         {
             if (isAttacking) return;
-            if (currentStamina < heavyStaminaCost) return;
-
+            if (currentStamina < heavyStaminaCost)
+            {
+                Debug.Log($"<color=orange>[Stamina]</color> Insuficiente para Estocada Pesada ({currentStamina:F0}/{heavyStaminaCost}).");
+                return;
+            }
             StartCoroutine(HeavyAttackRoutine());
+        }
+
+        public void PerformSporeShot()
+        {
+            if (isAttacking) return;
+
+            if (currentSporeCharge < sporeShotCost)
+            {
+                Debug.Log($"<color=orange>[Esporas]</color> SporeCharge insuficiente ({currentSporeCharge:F0}/{sporeShotCost}). Cosecha carcasas con [E].");
+                return;
+            }
+
+            StartCoroutine(SporeShotRoutine());
+        }
+
+        public void AddSporeCharge(float amount)
+        {
+            currentSporeCharge = Mathf.Min(maxSporeCharge, currentSporeCharge + amount);
+            Debug.Log($"<color=lime>[Cosecha]</color> +{amount} SporeCharge. Total: {currentSporeCharge}/{maxSporeCharge}");
+        }
+
+        public bool TryExecuteDash(float invulnerabilityDuration = 0.3f)
+        {
+            if (currentStamina < dashStaminaCost) return false;
+
+            currentStamina -= dashStaminaCost;
+            lastStaminaConsumeTime = Time.time;
+            StartCoroutine(InvulnerabilityRoutine(invulnerabilityDuration));
+            return true;
+        }
+
+        private IEnumerator InvulnerabilityRoutine(float duration)
+        {
+            isInvulnerable = true;
+            yield return new WaitForSeconds(duration);
+            isInvulnerable = false;
         }
 
         private IEnumerator LightAttackRoutine()
         {
             isAttacking = true;
             lastAttackTime = Time.time;
+            currentStamina = Mathf.Max(0f, currentStamina - 10f);
+            lastStaminaConsumeTime = Time.time;
 
             if (animator != null)
             {
@@ -126,8 +191,9 @@ namespace KingLucilia.Combat
                 animator.SetTrigger(AttackTriggerHash);
             }
 
+            SpawnSlashVFX(comboIndex);
+
             int damage = (comboIndex < comboDamages.Length) ? comboDamages[comboIndex] : 15;
-            Debug.Log($"<color=green>[Ataque Ligero]</color> Paso {comboIndex + 1} - Daño: {damage}");
             DealDamage(lightAttackRadius, damage);
 
             comboIndex = (comboIndex + 1) % comboDamages.Length;
@@ -139,21 +205,83 @@ namespace KingLucilia.Combat
         private IEnumerator HeavyAttackRoutine()
         {
             isAttacking = true;
-            ConsumeStamina(heavyStaminaCost);
+            currentStamina = Mathf.Max(0f, currentStamina - heavyStaminaCost);
+            lastStaminaConsumeTime = Time.time;
 
             if (animator != null)
             {
+                animator.ResetTrigger(AttackTriggerHash);
                 animator.SetTrigger(HeavyAttackTriggerHash);
             }
 
-            Debug.Log("<color=yellow>[Ataque Pesado]</color> Cargando estocada...");
             yield return new WaitForSeconds(heavyChargeDuration);
 
-            Debug.Log($"<color=red>[Ataque Pesado]</color> ¡Impacto! - Daño: {heavyDamage}");
+            SpawnSlashVFX(99);
             DealDamage(heavyAttackRadius, heavyDamage);
 
-            yield return new WaitForSeconds(0.35f);
+            yield return new WaitForSeconds(0.3f);
             isAttacking = false;
+        }
+
+        private IEnumerator SporeShotRoutine()
+        {
+            isAttacking = true;
+            currentSporeCharge -= sporeShotCost;
+
+            if (animator != null)
+            {
+                animator.ResetTrigger(AttackTriggerHash);
+                animator.SetTrigger(SporeShotTriggerHash);
+            }
+
+            // Esperar a que Lucilia levante la mano izquierda en la animación
+            yield return new WaitForSeconds(sporeSpawnDelay);
+
+            SpawnSporeProjectileFromLeftHand();
+
+            yield return new WaitForSeconds(sporeShotRecovery);
+            isAttacking = false;
+        }
+
+        // También puede llamarse desde un Animation Event si deseas precisión por fotograma
+        public void SpawnSporeProjectileFromLeftHand()
+        {
+            Vector3 spawnPos = leftHandFirePoint != null
+                ? leftHandFirePoint.position
+                : transform.position + transform.forward * 0.8f + Vector3.up * 1.2f - transform.right * 0.3f;
+
+            // El proyectil sale de la mano izquierda pero viaja recto en la dirección en la que mira Lucilia
+            Quaternion spawnRot = Quaternion.LookRotation(transform.forward, Vector3.up);
+
+            if (sporeProjectilePrefab != null)
+            {
+                GameObject projObj = Instantiate(sporeProjectilePrefab, spawnPos, spawnRot);
+                if (projObj.TryGetComponent<SporeProjectile>(out var sporeProj))
+                {
+                    sporeProj.Initialize(gameObject);
+                }
+            }
+            else
+            {
+                Debug.LogWarning("<color=yellow>[SporeShot]</color> Falta asignar SporeProjectilePrefab en el Inspector.");
+            }
+
+            Debug.Log($"<color=lime>[Disparo de Esporas]</color> Lanzado desde mano izquierda. SporeCharge: {currentSporeCharge}/{maxSporeCharge}");
+        }
+
+        private void SpawnSlashVFX(int attackType)
+        {
+            if (slashVFXPrefab == null) return;
+
+            Vector3 spawnPos = slashSpawnPoint != null ? slashSpawnPoint.position : (transform.position + transform.forward * 1.2f + Vector3.up * 1.1f);
+            Quaternion spawnRot = transform.rotation;
+
+            if (attackType == 0) spawnRot *= Quaternion.Euler(20f, 0f, -30f);
+            else if (attackType == 1) spawnRot *= Quaternion.Euler(-10f, 0f, 35f);
+            else if (attackType == 99) spawnRot *= Quaternion.Euler(0f, 0f, 90f);
+
+            GameObject instance = Instantiate(slashVFXPrefab, spawnPos, spawnRot);
+            Destroy(instance, slashVFXLifetime);
         }
 
         private void DealDamage(float radius, int damageAmount)
@@ -170,28 +298,6 @@ namespace KingLucilia.Combat
             }
         }
 
-        public bool TryExecuteDash(float invulnerabilityDuration = 0.3f)
-        {
-            if (currentStamina < dashStaminaCost) return false;
-
-            ConsumeStamina(dashStaminaCost);
-            StartCoroutine(InvulnerabilityRoutine(invulnerabilityDuration));
-            return true;
-        }
-
-        private IEnumerator InvulnerabilityRoutine(float duration)
-        {
-            IsInvulnerable = true;
-            yield return new WaitForSeconds(duration);
-            IsInvulnerable = false;
-        }
-
-        public void ConsumeStamina(float amount)
-        {
-            currentStamina = Mathf.Max(0f, currentStamina - amount);
-            lastStaminaConsumeTime = Time.time;
-        }
-
         private void RegenerateStamina()
         {
             if (Time.time - lastStaminaConsumeTime >= staminaRegenDelay && currentStamina < maxStamina)
@@ -205,6 +311,13 @@ namespace KingLucilia.Combat
             Vector3 origin = attackPoint != null ? attackPoint.position : transform.position + transform.forward * 1.2f + Vector3.up * 0.9f;
             Gizmos.color = Color.red;
             Gizmos.DrawWireSphere(origin, lightAttackRadius);
+
+            if (leftHandFirePoint != null)
+            {
+                Gizmos.color = Color.green;
+                Gizmos.DrawWireSphere(leftHandFirePoint.position, 0.15f);
+                Gizmos.DrawRay(leftHandFirePoint.position, transform.forward * 1.5f);
+            }
         }
     }
 }

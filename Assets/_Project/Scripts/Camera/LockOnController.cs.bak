@@ -1,0 +1,190 @@
+﻿using UnityEngine;
+using UnityEngine.InputSystem;
+using Unity.Cinemachine;
+
+public class LockOnController : MonoBehaviour
+{
+    [Header("References")]
+    [SerializeField] private Camera playerCamera;
+
+    [Header("Detection")]
+    [SerializeField] private LayerMask enemyLayers;
+    [SerializeField] private float detectionRadius = 15f;
+
+    [Header("Input")]
+    [SerializeField] private InputActionReference lockOnAction;
+
+    [Header("Cinemachine")]
+    [SerializeField] private CinemachineCamera explorationCam;
+    [SerializeField] private CinemachineCamera combatCam;
+    [SerializeField] private int explorationPriority = 20;
+    [SerializeField] private int combatPriority = 30;
+
+    public LockOnTarget CurrentTarget { get; private set; }
+    public bool IsLockedOn => CurrentTarget != null;
+
+    private bool enabledActionHere;
+
+    private void Start()
+    {
+        UpdateCameraMode();
+    }
+
+    private void OnEnable()
+    {
+        if (lockOnAction == null || lockOnAction.action == null)
+            return;
+
+        var action = lockOnAction.action;
+
+        enabledActionHere = !action.enabled;
+
+        if (enabledActionHere)
+            action.Enable();
+
+        action.performed += HandleLockOn;
+    }
+
+    private void OnDisable()
+    {
+        if (lockOnAction != null && lockOnAction.action != null)
+        {
+            var action = lockOnAction.action;
+            action.performed -= HandleLockOn;
+
+            if (enabledActionHere)
+                action.Disable();
+        }
+
+        CurrentTarget = null;
+        UpdateCameraMode();
+    }
+
+    // Compatible con Player Input -> Send Messages.
+    // El evento se procesa mediante HandleLockOn,
+    // evitando que Tab active el Lock-on dos veces.
+    public void OnLockOn(InputValue value)
+    {
+    }
+
+    private void HandleLockOn(InputAction.CallbackContext context)
+    {
+        if (IsLockedOn)
+            ClearTarget();
+        else
+            FindTarget();
+    }
+
+    private void FindTarget()
+    {
+        if (playerCamera == null)
+        {
+            Debug.LogWarning("LockOn: falta asignar Player Camera.");
+            return;
+        }
+
+        Collider[] hits = Physics.OverlapSphere(
+            transform.position,
+            detectionRadius,
+            enemyLayers
+        );
+
+        LockOnTarget bestTarget = null;
+        float bestScore = float.MaxValue;
+
+        foreach (Collider hit in hits)
+        {
+            LockOnTarget target =
+                hit.GetComponentInParent<LockOnTarget>();
+
+            if (target == null || !target.IsTargetable)
+                continue;
+
+            Vector3 screenPos =
+                playerCamera.WorldToViewportPoint(
+                    target.AimPoint.position
+                );
+
+            if (screenPos.z <= 0 ||
+                screenPos.x < 0 || screenPos.x > 1 ||
+                screenPos.y < 0 || screenPos.y > 1)
+                continue;
+
+            float score = Vector2.Distance(
+                new Vector2(screenPos.x, screenPos.y),
+                new Vector2(0.5f, 0.5f)
+            );
+
+            if (score < bestScore)
+            {
+                bestScore = score;
+                bestTarget = target;
+            }
+        }
+
+        if (bestTarget == null)
+        {
+            Debug.Log("Lock-on: no hay enemigos visibles en rango.");
+            return;
+        }
+
+        CurrentTarget = bestTarget;
+        UpdateCameraMode();
+
+        Debug.Log("Lock-on: " + bestTarget.name);
+    }
+
+    public void ClearTarget()
+    {
+        CurrentTarget = null;
+        UpdateCameraMode();
+
+        Debug.Log("Lock-on liberado");
+    }
+
+    private void UpdateCameraMode()
+    {
+        if (explorationCam != null)
+            explorationCam.Priority = explorationPriority;
+
+        if (combatCam == null)
+            return;
+
+        if (IsLockedOn)
+        {
+            // Seguimos al Player, pero miramos al enemigo.
+            combatCam.LookAt = CurrentTarget.AimPoint;
+            combatCam.Priority = combatPriority;
+        }
+        else
+        {
+            combatCam.Priority = 10;
+            combatCam.LookAt = null;
+        }
+    }
+
+    private void Update()
+    {
+        if (!IsLockedOn)
+            return;
+
+        if (CurrentTarget == null ||
+            !CurrentTarget.IsTargetable ||
+            Vector3.Distance(
+                transform.position,
+                CurrentTarget.transform.position
+            ) > detectionRadius)
+        {
+            ClearTarget();
+        }
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(
+            transform.position,
+            detectionRadius
+        );
+    }
+}

@@ -50,12 +50,6 @@ namespace KingLucilia.Enemies
             col = GetComponent<CapsuleCollider>();
             currentHealth = maxHealth;
 
-            if (agent != null)
-            {
-                agent.stoppingDistance = attackRange - 0.2f;
-                agent.autoBraking = true;
-            }
-
             if (meshRenderer == null)
             {
                 meshRenderer = GetComponentInChildren<SkinnedMeshRenderer>();
@@ -65,6 +59,12 @@ namespace KingLucilia.Enemies
             {
                 var player = GameObject.FindGameObjectWithTag("Player");
                 if (player != null) playerTarget = player.transform;
+            }
+
+            if (agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh)
+            {
+                agent.stoppingDistance = Mathf.Max(0.5f, attackRange - 0.2f);
+                agent.autoBraking = true;
             }
         }
 
@@ -176,7 +176,7 @@ namespace KingLucilia.Enemies
             }
         }
 
-        public void TakeDamage(int damageAmount, Vector3 hitPoint, Vector3 hitDirection)
+        public virtual void TakeDamage(int damageAmount, Vector3 hitPoint, Vector3 hitDirection)
         {
             if (IsDead) return;
 
@@ -224,7 +224,6 @@ namespace KingLucilia.Enemies
             }
             catch (UnityException) { }
 
-            // Altura y orientación original vertical en Y
             if (col != null)
             {
                 col.direction = 1;
@@ -245,7 +244,7 @@ namespace KingLucilia.Enemies
 
         public string GetInteractionPrompt() => "Presiona [E] para liberar con esporas";
 
-        public void Interact(KingLuciliaController player)
+        public virtual void Interact(KingLuciliaController player)
         {
             if (!IsDead || isHarvested) return;
 

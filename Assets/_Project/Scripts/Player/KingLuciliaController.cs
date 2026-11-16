@@ -11,7 +11,7 @@ namespace KingLucilia.Player
     {
         [Header("Movement Settings")]
         [SerializeField] private float moveSpeed = 6.0f;
-        [SerializeField] private float rotationSpeed = 15.0f;
+        [SerializeField] private float rotationSpeed = 360.0f;
         [SerializeField] private float gravity = -19.62f;
         [SerializeField] private float jumpHeight = 1.5f;
 
@@ -76,7 +76,6 @@ namespace KingLucilia.Player
             if (!value.isPressed || IsDead || isDashing) return;
             if (combat != null && combat.IsAttacking) return;
 
-            // 1. Salto desde el suelo (bloqueando trepar paredes por ángulo y cooldown)
             if (IsGroundedOnValidSlope() && Time.time >= lastJumpTime + 0.2f)
             {
                 jumpRequested = true;
@@ -85,7 +84,6 @@ namespace KingLucilia.Player
                 return;
             }
 
-            // 2. Dash Alado: Únicamente mientras está en el aire tras saltar y manteniendo dirección (W)
             if (!characterController.isGrounded && canAirDash && moveInput.sqrMagnitude > 0.05f)
             {
                 if (combat != null && combat.TryExecuteDash(0.3f))
@@ -115,8 +113,6 @@ namespace KingLucilia.Player
         private bool IsGroundedOnValidSlope()
         {
             if (!characterController.isGrounded) return false;
-
-            // Evita considerar suelo a paredes empinadas (límite por slopeLimit)
             float slopeAngle = Vector3.Angle(Vector3.up, groundNormal);
             return slopeAngle <= characterController.slopeLimit;
         }
@@ -129,7 +125,7 @@ namespace KingLucilia.Player
         private IEnumerator PerformDashRoutine()
         {
             isDashing = true;
-            verticalVelocity.y = 0f; // Pausa temporal de caída durante el impulso horizontal
+            verticalVelocity.y = 0f;
             float elapsed = 0f;
             float speed = dashDistance / dashDuration;
 
@@ -203,7 +199,7 @@ namespace KingLucilia.Player
             if (moveDirection.sqrMagnitude >= 0.001f)
             {
                 Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+                transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
             }
 
             return moveDirection * moveSpeed;
@@ -225,7 +221,6 @@ namespace KingLucilia.Player
                 }
                 else
                 {
-                    // Al tocar suelo firme se reinicia la posibilidad de dash
                     canAirDash = false;
                 }
             }
@@ -274,3 +269,4 @@ namespace KingLucilia.Player
         }
     }
 }
+
