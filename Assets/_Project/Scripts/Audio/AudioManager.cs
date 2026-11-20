@@ -13,6 +13,8 @@ namespace KingLucilia.Audio
         [SerializeField] private AudioMixerSnapshot snapArenaColoso;
 
         [Header("Audio Sources")]
+        [SerializeField] private AudioSource explorationMusicSource;
+        [SerializeField] private AudioSource bossMusicSource;
         [SerializeField] private AudioSource sfxSource;
         [SerializeField] private AudioSource voiceSource;
 
@@ -24,6 +26,9 @@ namespace KingLucilia.Audio
         [SerializeField] private AudioClip dashClip;
         [SerializeField] private AudioClip harvestSporeClip;
         [SerializeField] private AudioClip damageClip;
+        [SerializeField] private AudioClip sporeShotClip;
+        [SerializeField] private AudioClip collectMushroomClip;
+        [SerializeField] private AudioClip queenInteractClip;
 
         [Header("Lineas de Voz (Bloque E)")]
         [SerializeField] private AudioClip[] voiceLines;
@@ -40,25 +45,27 @@ namespace KingLucilia.Audio
         private void Start()
         {
             SetExplorationState(0.5f);
-            PlayVoiceLine(0); // Linea 1 al iniciar el recorrido
+            PlayVoiceLine(0);
         }
 
-        // Bloque B: Estados musicales con tiempos de transicion deliberados
         public void SetExplorationState(float transitionTime = 2.0f)
         {
             IsBossFightActive = false;
+            if (bossMusicSource != null && bossMusicSource.isPlaying) bossMusicSource.Stop();
+            if (explorationMusicSource != null && !explorationMusicSource.isPlaying) explorationMusicSource.Play();
             if (snapLlanuras != null) snapLlanuras.TransitionTo(transitionTime);
         }
 
         public void SetBossCombatState(float transitionTime = 1.2f)
         {
             IsBossFightActive = true;
+            if (explorationMusicSource != null && explorationMusicSource.isPlaying) explorationMusicSource.Stop();
+            if (bossMusicSource != null && !bossMusicSource.isPlaying) bossMusicSource.Play();
             if (snapArenaColoso != null) snapArenaColoso.TransitionTo(transitionTime);
         }
 
-        // Bloque C: SFX con variacion (clips alternados + pitch/volumen aleatorios)
-        public void PlayFootstep() => PlayRandomVariation(footstepClips, 0.92f, 1.08f, 0.75f, 0.95f);
-        public void PlaySlash() => PlayRandomVariation(slashClips, 0.90f, 1.12f, 0.85f, 1.0f);
+        public void PlayFootstep() => PlayRandomVariation(footstepClips, 0.97f, 1.03f, 0.82f, 0.96f);
+        public void PlaySlash() => PlayRandomVariation(slashClips, 0.96f, 1.04f, 0.88f, 1.0f);
 
         private void PlayRandomVariation(AudioClip[] clips, float minPitch, float maxPitch, float minVol, float maxVol)
         {
@@ -68,19 +75,20 @@ namespace KingLucilia.Audio
             sfxSource.PlayOneShot(selected, Random.Range(minVol, maxVol));
         }
 
-        // Bloque C: SFX puntuales fijos
         public void PlayDash() => PlayFixedSFX(dashClip, 0.95f);
         public void PlayHarvest() => PlayFixedSFX(harvestSporeClip, 1.0f);
         public void PlayDamage() => PlayFixedSFX(damageClip, 1.0f);
+        public void PlaySporeShot() => PlayFixedSFX(sporeShotClip, 0.95f);
+        public void PlayCollectMushroom() => PlayFixedSFX(collectMushroomClip, 1.0f);
+        public void PlayQueenInteract() => PlayFixedSFX(queenInteractClip, 0.95f);
 
         private void PlayFixedSFX(AudioClip clip, float volume)
         {
             if (clip == null || sfxSource == null) return;
-            sfxSource.pitch = 1f;
+            // Mantiene el pitch limpio sin cortar la cola del tajo
             sfxSource.PlayOneShot(clip, volume);
         }
 
-        // Bloque E: Disparo de voz humana editada
         public void PlayVoiceLine(int index)
         {
             if (voiceSource == null || voiceLines == null || index < 0 || index >= voiceLines.Length) return;

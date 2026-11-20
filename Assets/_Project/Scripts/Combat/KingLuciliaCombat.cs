@@ -2,6 +2,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using KingLucilia.Core;
+using KingLucilia.Audio;
 
 namespace KingLucilia.Combat
 {
@@ -32,10 +33,8 @@ namespace KingLucilia.Combat
 
         [Header("Spore Shot Settings (Tecla Q - Mano Izquierda)")]
         [SerializeField] private GameObject sporeProjectilePrefab;
-        [Tooltip("Arrastra aquí el Empty creado dentro del hueso LeftHand")]
         [SerializeField] private Transform leftHandFirePoint;
         [SerializeField] private float sporeShotCost = 20f;
-        [Tooltip("Tiempo en segundos desde que inicia la animación hasta que sale la espora de la mano")]
         [SerializeField] private float sporeSpawnDelay = 0.25f;
         [SerializeField] private float sporeShotRecovery = 0.35f;
 
@@ -134,31 +133,19 @@ namespace KingLucilia.Combat
         public void PerformHeavyAttack()
         {
             if (isAttacking) return;
-            if (currentStamina < heavyStaminaCost)
-            {
-                Debug.Log($"<color=orange>[Stamina]</color> Insuficiente para Estocada Pesada ({currentStamina:F0}/{heavyStaminaCost}).");
-                return;
-            }
+            if (currentStamina < heavyStaminaCost) return;
             StartCoroutine(HeavyAttackRoutine());
         }
 
         public void PerformSporeShot()
         {
-            if (isAttacking) return;
-
-            if (currentSporeCharge < sporeShotCost)
-            {
-                Debug.Log($"<color=orange>[Esporas]</color> SporeCharge insuficiente ({currentSporeCharge:F0}/{sporeShotCost}). Cosecha carcasas con [E].");
-                return;
-            }
-
+            if (isAttacking || currentSporeCharge < sporeShotCost) return;
             StartCoroutine(SporeShotRoutine());
         }
 
         public void AddSporeCharge(float amount)
         {
             currentSporeCharge = Mathf.Min(maxSporeCharge, currentSporeCharge + amount);
-            Debug.Log($"<color=lime>[Cosecha]</color> +{amount} SporeCharge. Total: {currentSporeCharge}/{maxSporeCharge}");
         }
 
         public bool TryExecuteDash(float invulnerabilityDuration = 0.3f)
@@ -191,6 +178,9 @@ namespace KingLucilia.Combat
                 animator.SetTrigger(AttackTriggerHash);
             }
 
+            // Dispara el SFX de corte de espada con variacion aleatoria
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySlash();
+
             SpawnSlashVFX(comboIndex);
 
             int damage = (comboIndex < comboDamages.Length) ? comboDamages[comboIndex] : 15;
@@ -216,6 +206,9 @@ namespace KingLucilia.Combat
 
             yield return new WaitForSeconds(heavyChargeDuration);
 
+            // Dispara el SFX de corte al ejecutar la estocada pesada
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySlash();
+
             SpawnSlashVFX(99);
             DealDamage(heavyAttackRadius, heavyDamage);
 
@@ -234,23 +227,21 @@ namespace KingLucilia.Combat
                 animator.SetTrigger(SporeShotTriggerHash);
             }
 
-            // Esperar a que Lucilia levante la mano izquierda en la animación
             yield return new WaitForSeconds(sporeSpawnDelay);
 
+            if (AudioManager.Instance != null) AudioManager.Instance.PlaySporeShot();
             SpawnSporeProjectileFromLeftHand();
 
             yield return new WaitForSeconds(sporeShotRecovery);
             isAttacking = false;
         }
 
-        // También puede llamarse desde un Animation Event si deseas precisión por fotograma
         public void SpawnSporeProjectileFromLeftHand()
         {
             Vector3 spawnPos = leftHandFirePoint != null
                 ? leftHandFirePoint.position
                 : transform.position + transform.forward * 0.8f + Vector3.up * 1.2f - transform.right * 0.3f;
 
-            // El proyectil sale de la mano izquierda pero viaja recto en la dirección en la que mira Lucilia
             Quaternion spawnRot = Quaternion.LookRotation(transform.forward, Vector3.up);
 
             if (sporeProjectilePrefab != null)
@@ -261,12 +252,6 @@ namespace KingLucilia.Combat
                     sporeProj.Initialize(gameObject);
                 }
             }
-            else
-            {
-                Debug.LogWarning("<color=yellow>[SporeShot]</color> Falta asignar SporeProjectilePrefab en el Inspector.");
-            }
-
-            Debug.Log($"<color=lime>[Disparo de Esporas]</color> Lanzado desde mano izquierda. SporeCharge: {currentSporeCharge}/{maxSporeCharge}");
         }
 
         private void SpawnSlashVFX(int attackType)

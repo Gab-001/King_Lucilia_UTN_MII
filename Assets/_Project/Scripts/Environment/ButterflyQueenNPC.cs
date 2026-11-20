@@ -3,6 +3,7 @@ using UnityEngine;
 using Unity.Cinemachine;
 using KingLucilia.Core;
 using KingLucilia.Player;
+using KingLucilia.Audio;
 
 namespace KingLucilia.Environment
 {
@@ -45,27 +46,26 @@ namespace KingLucilia.Environment
 
             try
             {
-                // 1. Frenar animación de caminar y bloquear controles
                 if (activePlayer != null)
                 {
                     var anim = activePlayer.GetComponentInChildren<Animator>();
-                    if (anim != null)
-                    {
-                        anim.SetFloat("Speed", 0f);
-                    }
+                    if (anim != null) anim.SetFloat("Speed", 0f);
                     activePlayer.enabled = false;
                 }
 
-                // 2. Activar cámara cinemática
                 if (dialogueCamera != null) dialogueCamera.Priority = 20;
 
-                // 3. Activar UI de cinemática
+                if (AudioManager.Instance != null)
+                {
+                    AudioManager.Instance.PlayQueenInteract();
+                    AudioManager.Instance.PlayVoiceLine(1);
+                }
+
                 if (dialoguePanel != null) dialoguePanel.SetActive(true);
                 if (speakerNameText != null) speakerNameText.text = "Reina Mariposa";
 
                 yield return new WaitForSeconds(1.0f);
 
-                // 4. Secuencia de texto línea por línea
                 foreach (string line in dialogueLines)
                 {
                     if (dialogueText != null)
@@ -79,14 +79,12 @@ namespace KingLucilia.Environment
                     }
                     else
                     {
-                        Debug.Log($"<color=magenta>[Reina Mariposa]</color> {line}");
                         yield return new WaitForSeconds(2.5f);
                     }
 
                     yield return new WaitForSeconds(1.8f);
                 }
 
-                // 5. Otorgar el don de las alas (si el componente existe en Lucilia)
                 if (activePlayer != null && activePlayer.TryGetComponent<LuciliaWingsVFX>(out var wingsComp))
                 {
                     wingsComp.GrantDormantWings();
@@ -96,19 +94,12 @@ namespace KingLucilia.Environment
             }
             finally
             {
-                // 6. Restaurar cámara y devolver el control pase lo que pase
                 if (dialoguePanel != null) dialoguePanel.SetActive(false);
                 if (dialogueCamera != null) dialogueCamera.Priority = 0;
 
-                if (activePlayer != null)
-                {
-                    activePlayer.enabled = true;
-                }
+                if (activePlayer != null) activePlayer.enabled = true;
                 isInteracting = false;
             }
-
-            yield return new WaitForSeconds(0.5f);
-            Debug.Log("<color=green>[Cinemática Concluida]</color> Control devuelto a Lucilia.");
         }
     }
 }

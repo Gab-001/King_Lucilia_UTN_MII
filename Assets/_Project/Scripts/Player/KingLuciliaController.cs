@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using KingLucilia.Core;
 using KingLucilia.Combat;
+using KingLucilia.Audio;
 
 namespace KingLucilia.Player
 {
@@ -11,9 +12,13 @@ namespace KingLucilia.Player
     {
         [Header("Movement Settings")]
         [SerializeField] private float moveSpeed = 6.0f;
-        [SerializeField] private float rotationSpeed = 360.0f;
+        [SerializeField] private float rotationSpeed = 15.0f;
         [SerializeField] private float gravity = -19.62f;
         [SerializeField] private float jumpHeight = 1.5f;
+
+        [Header("Footstep Audio Settings")]
+        [SerializeField] private float stepInterval = 0.42f;
+        private float stepTimer = 0f;
 
         [Header("Dash Settings")]
         [SerializeField] private float dashDistance = 6.0f;
@@ -89,6 +94,7 @@ namespace KingLucilia.Player
                 if (combat != null && combat.TryExecuteDash(0.3f))
                 {
                     canAirDash = false;
+                    if (AudioManager.Instance != null) AudioManager.Instance.PlayDash();
                     StartCoroutine(PerformDashRoutine());
                 }
             }
@@ -160,7 +166,30 @@ namespace KingLucilia.Player
 
             characterController.Move((horizontalMove + verticalMove) * Time.deltaTime);
 
+            HandleFootstepAudio(horizontalMove.magnitude);
             UpdateAnimator(horizontalMove.magnitude);
+        }
+
+        private void HandleFootstepAudio(float currentSpeed)
+        {
+            bool isMovingOnGround = characterController.isGrounded && currentSpeed > 0.5f && (combat == null || !combat.IsAttacking);
+
+            if (isMovingOnGround)
+            {
+                stepTimer -= Time.deltaTime;
+                if (stepTimer <= 0f)
+                {
+                    if (AudioManager.Instance != null)
+                    {
+                        AudioManager.Instance.PlayFootstep();
+                    }
+                    stepTimer = stepInterval;
+                }
+            }
+            else
+            {
+                stepTimer = 0.05f; // Para que el primer paso suene casi de inmediato al volver a moverse
+            }
         }
 
         private Vector3 GetMovementDirection()
@@ -199,7 +228,7 @@ namespace KingLucilia.Player
             if (moveDirection.sqrMagnitude >= 0.001f)
             {
                 Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
-                transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
             }
 
             return moveDirection * moveSpeed;
@@ -252,6 +281,7 @@ namespace KingLucilia.Player
             }
 
             currentHealth = Mathf.Max(0, currentHealth - damageAmount);
+            if (AudioManager.Instance != null) AudioManager.Instance.PlayDamage();
             Debug.Log($"<color=red>[Player Daño]</color> Lucilia recibió {damageAmount} de daño. Vida actual: {currentHealth}/{maxHealth}");
 
             if (currentHealth <= 0)
@@ -269,4 +299,3 @@ namespace KingLucilia.Player
         }
     }
 }
-

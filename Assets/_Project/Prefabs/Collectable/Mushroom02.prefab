@@ -25,12 +25,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2997964173195954855}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 6.064026, y: 9.722748, z: 4.609894}
-  m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
+  m_LocalRotation: {x: 0.7071069, y: -0, z: -0, w: 0.7071067}
+  m_LocalPosition: {x: 0.060640257, y: -0.046098974, z: 0.097227454}
+  m_LocalScale: {x: 0.005, y: 0.005, z: 0.005}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 2503058689050824789}
+  m_Father: {fileID: 3801150216618132709}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!82 &7291928505724741668
 AudioSource:
@@ -43,7 +43,7 @@ AudioSource:
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: -9076457179357365904, guid: f9183d1b23246024c886ce80d8ce7855, type: 2}
   m_audioClip: {fileID: 0}
-  m_Resource: {fileID: 0}
+  m_Resource: {fileID: 8300000, guid: 9475b1640a7fe4b478c7230c4067a5fe, type: 3}
   m_PlayOnAwake: 1
   m_Volume: 1
   m_Pitch: 1
@@ -53,8 +53,8 @@ AudioSource:
   SpatializePostEffects: 0
   Priority: 128
   DopplerLevel: 1
-  MinDistance: 1
-  MaxDistance: 10
+  MinDistance: 6
+  MaxDistance: 20
   Pan2D: 0
   rolloffMode: 0
   BypassEffects: 0
@@ -160,7 +160,6 @@ Transform:
   m_Children:
   - {fileID: 3801150216618132709}
   - {fileID: 6671335338196559208}
-  - {fileID: 2089714424923440901}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &791659771690610972
@@ -608,6 +607,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: 2c12aefcb43d6184a9f1105e4150272b, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2577949393558307916}
+    - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: 2c12aefcb43d6184a9f1105e4150272b, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2089714424923440901}
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 2c12aefcb43d6184a9f1105e4150272b, type: 3}
       insertIndex: -1

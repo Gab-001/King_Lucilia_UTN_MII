@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.AI;
 using KingLucilia.Core;
 using KingLucilia.Player;
+using KingLucilia.Audio;
 
 namespace KingLucilia.Enemies
 {
@@ -249,6 +250,11 @@ namespace KingLucilia.Enemies
             if (!IsDead || isHarvested) return;
 
             isHarvested = true;
+
+            if (AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlayHarvest();
+            }
 
             if (sporeDissolveVFXPrefab != null)
             {
