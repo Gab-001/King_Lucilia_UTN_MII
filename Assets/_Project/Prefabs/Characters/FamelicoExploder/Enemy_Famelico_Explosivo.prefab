@@ -8,6 +8,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 493376073394969427, guid: 5fbe787970977344fa89dacb3e23ac70, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2784477166870257003, guid: 5fbe787970977344fa89dacb3e23ac70, type: 3}
       propertyPath: m_Speed
       value: 5
@@ -58,6 +62,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents:
     - {fileID: 9212994223373691360, guid: 5fbe787970977344fa89dacb3e23ac70, type: 3}
+    - {fileID: 493376073394969427, guid: 5fbe787970977344fa89dacb3e23ac70, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
@@ -102,6 +107,8 @@ MonoBehaviour:
   sporeDissolveVFXPrefab: {fileID: 8075281335431187064, guid: 390baf7b38aa2d64497a0f2a7e9b90d5, type: 3}
   destroyDelay: 0.2
   playerTarget: {fileID: 0}
+  detectionRadius: 15
+  loseTargetRadius: 20
   fuseTime: 3.5
   explosionRadius: 4.5
   explosionDamage: 35

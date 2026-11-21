@@ -34,6 +34,12 @@ namespace KingLucilia.Enemies
         [Header("Player Tracking")]
         [SerializeField] private Transform playerTarget;
 
+        [Header("Detection Settings")]
+        [SerializeField] private float detectionRadius = 8f;
+        [SerializeField] private float loseTargetRadius = 12f;
+
+        private bool hasDetectedPlayer = false;
+
         private NavMeshAgent agent;
         private Animator animator;
         private CapsuleCollider col;
@@ -66,6 +72,9 @@ namespace KingLucilia.Enemies
             {
                 agent.stoppingDistance = Mathf.Max(0.5f, attackRange - 0.2f);
                 agent.autoBraking = true;
+                agent.radius = 0.45f;
+                agent.obstacleAvoidanceType =
+                    ObstacleAvoidanceType.HighQualityObstacleAvoidance;
             }
         }
 
@@ -77,6 +86,29 @@ namespace KingLucilia.Enemies
 
             float distanceToPlayer = Vector3.Distance(transform.position, playerTarget.position);
 
+            // Detectar a Lucilia solamente dentro del radio.
+            if (!hasDetectedPlayer)
+            {
+                if (distanceToPlayer <= detectionRadius)
+                {
+                    hasDetectedPlayer = true;
+                }
+                else
+                {
+                    StopTracking();
+                    return;
+                }
+            }
+
+            // Abandonar la persecución cuando se aleja.
+            if (distanceToPlayer > loseTargetRadius && !isAttacking)
+            {
+                hasDetectedPlayer = false;
+                currentState = EnemyState.Chase;
+                StopTracking();
+                return;
+            }
+
             switch (currentState)
             {
                 case EnemyState.Chase:
@@ -86,6 +118,22 @@ namespace KingLucilia.Enemies
                     HandleAttack(distanceToPlayer);
                     break;
             }
+        }
+
+        private void StopTracking()
+        {
+            if (agent != null &&
+                agent.isActiveAndEnabled &&
+                agent.isOnNavMesh)
+            {
+                agent.isStopped = true;
+
+                if (agent.hasPath)
+                    agent.ResetPath();
+            }
+
+            if (animator != null)
+                animator.SetFloat("Speed", 0f);
         }
 
         private void HandleChase(float distance)
@@ -266,9 +314,16 @@ namespace KingLucilia.Enemies
 
         private void OnDrawGizmosSelected()
         {
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawWireSphere(transform.position, detectionRadius);
+
+            Gizmos.color = Color.red;
+            Gizmos.DrawWireSphere(transform.position, loseTargetRadius);
+
             Gizmos.color = Color.magenta;
             Vector3 hitCenter = handHitPoint != null ? handHitPoint.position : transform.position + transform.forward * 1.0f + Vector3.up * 1.0f;
             Gizmos.DrawWireSphere(hitCenter, hitRadius);
         }
     }
 }
+

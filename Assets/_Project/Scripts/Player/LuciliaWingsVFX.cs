@@ -11,6 +11,8 @@ namespace KingLucilia.Player
 
         private bool hasDormantWings = false;
 
+        public bool HasDormantWings => hasDormantWings;
+
         private void Awake()
         {
             if (wingsObject != null) wingsObject.SetActive(false);
@@ -39,3 +41,4 @@ namespace KingLucilia.Player
         }
     }
 }
+
